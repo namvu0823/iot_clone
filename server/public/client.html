@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check-in System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 500px;
+        }
+        .container input, .container textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .container textarea {
+            height: 100px;
+            font-family: monospace;
+            resize: vertical;
+        }
+        .container button {
+            background-color: #28a745;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin: 5px 0;
+        }
+        .container button:hover {
+            background-color: #218838;
+        }
+        .fingerprint {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 10px;
+            color: #666;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        .input-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Authentication System</h2>
+        
+        <div class="input-group">
+            <label class="input-label" for="uid">User ID:</label>
+            <input type="text" id="uid" placeholder="Enter UID" required>
+        </div>
+
+        <div class="input-group">
+            <label class="input-label" for="password">Password:</label>
+            <input type="password" id="password" placeholder="Enter Password" required>
+        </div>
+
+        <div class="input-group">
+            <label class="input-label" for="fingerTemplate">Finger Template (comma-separated values):</label>
+            <textarea id="fingerTemplate" placeholder="Enter finger template values separated by commas (e.g., 1,2,3,4,5)"></textarea>
+        </div>
+
+        <button onclick="createAccount()" id="createBtn">Create Account</button>
+        <button onclick="checkIn()" id="checkInBtn">Check In</button>
+        <div id="loading" class="loading">Processing... Please wait</div>
+        <div class="fingerprint" id="fingerprint"></div>
+    </div>
+
+    <script>
+        async function createAccount() {
+            const uid = document.getElementById('uid').value;
+            const password = document.getElementById('password').value;
+            const createBtn = document.getElementById('createBtn');
+            const loading = document.getElementById('loading');
+            const fingerprint = document.getElementById('fingerprint');
+
+            if (!uid || !password) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            try {
+                createBtn.disabled = true;
+                loading.style.display = 'block';
+                fingerprint.innerText = '';
+
+                const response = await fetch('/create-account', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ uid, password })
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    fingerprint.innerText = `Fingerprint Template:\n${result.finger.join(', ')}`;
+                } else {
+                    alert(result.message || 'Failed to create account');
+                }
+            } catch (error) {
+                alert('An error occurred. Please try again.');
+                console.error('Error:', error);
+            } finally {
+                createBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+
+        async function checkIn() {
+            const uid = document.getElementById('uid').value;
+            const password = document.getElementById('password').value;
+            const fingerTemplateStr = document.getElementById('fingerTemplate').value;
+            const checkInBtn = document.getElementById('checkInBtn');
+            const loading = document.getElementById('loading');
+            const fingerprint = document.getElementById('fingerprint');
+
+            if (!uid || !password || !fingerTemplateStr) {
+                alert('Please fill in all fields including the finger template');
+                return;
+            }
+
+            // Convert the comma-separated string to an array of numbers
+            let fingerTemplate;
+            try {
+                fingerTemplate = fingerTemplateStr.split(',').map(num => parseInt(num.trim()));
+                if (fingerTemplate.some(isNaN)) {
+                    throw new Error('Invalid finger template format');
+                }
+            } catch (error) {
+                alert('Please enter valid numbers separated by commas for the finger template');
+                return;
+            }
+
+            try {
+                checkInBtn.disabled = true;
+                loading.style.display = 'block';
+                fingerprint.innerText = '';
+
+                const response = await fetch('/check-in', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        UID: uid,
+                        password: password,
+                        finger: fingerTemplate
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    alert('Check-in successful!');
+                    fingerprint.innerText = 'Check-in completed successfully';
+                } else {
+                    alert(result.message || 'Check-in failed');
+                }
+            } catch (error) {
+                alert('An error occurred during check-in. Please try again.');
+                console.error('Error:', error);
+            } finally {
+                checkInBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
